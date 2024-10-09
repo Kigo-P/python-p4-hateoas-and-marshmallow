@@ -16,6 +16,36 @@ migrate = Migrate(app, db)
 db.init_app(app)
 
 api = Api(app)
+# initiating marshmellow with the app
+ma = Marshmallow(app)
+
+# configuring marshmellow- it inherits from SQLAlchemySchema
+class NewsletterSchema(ma.SQLAlchemySchema):
+    #  Knowing the model we have used
+    class Meta:
+        model = Newsletter
+        load_instance = True #indicating that the model instances should be desirialize
+    
+    # The attributes that will appear
+    title = ma.auto_field()
+    published_at = ma.auto_field()
+
+    #  setting up the urls for single anf full collection on each record
+    url = ma.Hyperlinks(
+        {
+            "self": ma.URLFor(
+                "newsletterbyid",
+                values=dict(id="<id>")),
+            "collection": ma.URLFor("newsletters"),
+        }
+    )
+
+# Instantiating the schema for single records and multiple records
+newletter_schema = NewsletterSchema()
+newletters_schema = NewsletterSchema(many = True)
+
+
+
 
 class Index(Resource):
 
@@ -37,11 +67,12 @@ api.add_resource(Index, '/')
 class Newsletters(Resource):
 
     def get(self):
-        
-        response_dict_list = [n.to_dict() for n in Newsletter.query.all()]
+        #  Querying the database to get all newsletters
+        newsletters = Newsletter.query.all()
 
+        #  removing all the to_dict() methhods and using newsletters_schema.dump()
         response = make_response(
-            response_dict_list,
+            newletters_schema.dump(newsletters),
             200,
         )
 
@@ -57,10 +88,9 @@ class Newsletters(Resource):
         db.session.add(new_record)
         db.session.commit()
 
-        response_dict = new_record.to_dict()
-
+        #  removing all the to_dict() methods and using newsletters_schema.dump()
         response = make_response(
-            response_dict,
+            newletters_schema.dump(new_record),
             201,
         )
 
@@ -72,10 +102,11 @@ class NewsletterByID(Resource):
 
     def get(self, id):
 
-        response_dict = Newsletter.query.filter_by(id=id).first().to_dict()
+        newsletter = Newsletter.query.filter_by(id=id).first()
 
+        # removing all the to_dict() methhods and using newsletters_schema.dump()
         response = make_response(
-            response_dict,
+            newletter_schema.dump(newsletter),
             200,
         )
 
@@ -90,10 +121,9 @@ class NewsletterByID(Resource):
         db.session.add(record)
         db.session.commit()
 
-        response_dict = record.to_dict()
-
+        #  removing all the to_dict() methhods and using newsletters_schema.dump()
         response = make_response(
-            response_dict,
+            newletter_schema.dump(record),
             200
         )
 
